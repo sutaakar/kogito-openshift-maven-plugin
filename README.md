@@ -1,0 +1,1 @@
+# kogito-openshift-maven-plugin
