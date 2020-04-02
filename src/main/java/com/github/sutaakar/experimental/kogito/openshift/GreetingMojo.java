@@ -9,37 +9,30 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.openshift.api.model.BuildConfig;
 import io.fabric8.openshift.api.model.ProjectRequest;
 import io.fabric8.openshift.api.model.ProjectRequestBuilder;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Says "Hi" to the user.
  *
  */
-@Mojo(name = "sayhi")
+@Mojo(name = "deploy")
 public class GreetingMojo extends AbstractMojo {
 
     private TimeUtils timeUtils = new TimeUtils(getLog());
     
-    /**
-     * The greeting to display.
-     */
-    @Parameter( property = "sayhi.greeting", defaultValue = "Hello World!" )
-    private String greeting;
-
     public void execute() throws MojoExecutionException {
-        getLog().info(greeting);
-        
         try (OlmAwareOpenShiftClient client = new OlmAwareOpenShiftClient()) {
-            String namespace = "ksuta-experiment";
+            String namespace = "kogito-" + UUID.randomUUID().toString().substring(0, 4);
             getLog().info(namespace);
             
             ProjectRequest projectRequest = (new ProjectRequestBuilder().withNewMetadata().withName(namespace).endMetadata().build());
@@ -51,9 +44,15 @@ public class GreetingMojo extends AbstractMojo {
             waitForKogitoOperatorRunning(client, namespace);
             getLog().info("Running");
             
+            client.createKogitoApp(namespace, "kogito");
+            
+            getLog().info("Waiting for BuildConfig");
+            
+            waitForBuildConfig(client, namespace, "kogito-binary");
+            
             Path createTempFile = Files.createTempFile("test", ".zip");
             zipFolder(new File("target").toPath(), createTempFile);
-            client.buildConfigs().withName("example-quarkus-binary").instantiateBinary().fromFile(createTempFile.toFile());
+            client.buildConfigs().inNamespace(namespace).withName("kogito-binary").instantiateBinary().fromFile(createTempFile.toFile());
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -64,6 +63,16 @@ public class GreetingMojo extends AbstractMojo {
         timeUtils.wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
             Deployment kogitoDeployment = client.apps().deployments().inNamespace(namespace).withName("kogito-operator").get();
             return kogitoDeployment != null && kogitoDeployment.getStatus() != null && kogitoDeployment.getStatus().getAvailableReplicas() != null && kogitoDeployment.getStatus().getAvailableReplicas().intValue() > 0;
+        });
+    }
+    
+    private void waitForBuildConfig(OlmAwareOpenShiftClient client, String namespace, String buildConfigName) {
+        timeUtils.wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
+            BuildConfig buildConfig = client.buildConfigs().inNamespace(namespace).withName(buildConfigName).get();
+            if (buildConfig != null) {
+                getLog().info("BuildConfig found");
+            }
+            return buildConfig != null;
         });
     }
     
