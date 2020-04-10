@@ -15,8 +15,6 @@ import java.util.zip.ZipOutputStream;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.api.model.BuildConfig;
-import io.fabric8.openshift.api.model.ProjectRequest;
-import io.fabric8.openshift.api.model.ProjectRequestBuilder;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -35,8 +33,7 @@ public class GreetingMojo extends AbstractMojo {
             String namespace = "kogito-" + UUID.randomUUID().toString().substring(0, 4);
 
             getLog().info("Creating namespace " + namespace);
-            ProjectRequest projectRequest = (new ProjectRequestBuilder().withNewMetadata().withName(namespace).endMetadata().build());
-            client.projectrequests().create(projectRequest);
+            client.createProject(namespace);
 
             getLog().info("Installing Kogito operator");
             client.createOperatorGroup(namespace, "kogito-operator-group");
@@ -55,7 +52,7 @@ public class GreetingMojo extends AbstractMojo {
             throw new MojoExecutionException("Error while deploying Kogito application to OpenShift", e);
         }
     }
-    
+
     private void waitForKogitoOperatorRunning(OlmAwareOpenShiftClient client, String namespace) {
         timeUtils.wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
             Deployment kogitoDeployment = client.apps().deployments().inNamespace(namespace).withName("kogito-operator").get();
