@@ -24,10 +24,10 @@ import org.apache.maven.plugins.annotations.Mojo;
  *
  */
 @Mojo(name = "deploy")
-public class GreetingMojo extends AbstractMojo {
+public class DeployKogitoApplicationMojo extends AbstractMojo {
 
     private TimeUtils timeUtils = new TimeUtils(getLog());
-    
+
     public void execute() throws MojoExecutionException {
         try (OlmAwareOpenShiftClient client = new OlmAwareOpenShiftClient()) {
             String namespace = "kogito-" + UUID.randomUUID().toString().substring(0, 4);
@@ -59,18 +59,18 @@ public class GreetingMojo extends AbstractMojo {
             return kogitoDeployment != null && kogitoDeployment.getStatus() != null && kogitoDeployment.getStatus().getAvailableReplicas() != null && kogitoDeployment.getStatus().getAvailableReplicas().intValue() > 0;
         });
     }
-    
+
     private void waitForBuildConfig(OlmAwareOpenShiftClient client, String namespace, String buildConfigName) {
         timeUtils.wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
             BuildConfig buildConfig = client.buildConfigs().inNamespace(namespace).withName(buildConfigName).get();
             return buildConfig != null;
         });
     }
-    
+
     private void zipFolder(Path sourceFolderPath, Path zipPath) throws IOException {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()))) {
             Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
-    
+
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     zos.putNextEntry(new ZipEntry(sourceFolderPath.relativize(file).toString()));
