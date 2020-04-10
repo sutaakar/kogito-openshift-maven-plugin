@@ -33,23 +33,21 @@ public class GreetingMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         try (OlmAwareOpenShiftClient client = new OlmAwareOpenShiftClient()) {
             String namespace = "kogito-" + UUID.randomUUID().toString().substring(0, 4);
-            getLog().info(namespace);
-            
+
+            getLog().info("Creating namespace " + namespace);
             ProjectRequest projectRequest = (new ProjectRequestBuilder().withNewMetadata().withName(namespace).endMetadata().build());
             client.projectrequests().create(projectRequest);
 
+            getLog().info("Installing Kogito operator");
             client.createOperatorGroup(namespace, "kogito-operator-group");
             client.createSubscription(namespace, "kogito-operator", "alpha", "community-operators");
-            
             waitForKogitoOperatorRunning(client, namespace);
-            getLog().info("Running");
-            
+
+            getLog().info("Creating Kogito application");
             client.createKogitoApp(namespace, "kogito");
-            
-            getLog().info("Waiting for BuildConfig");
-            
             waitForBuildConfig(client, namespace, "kogito-binary");
-            
+
+            getLog().info("Uploading content of 'target' directory");
             Path createTempFile = Files.createTempFile("test", ".zip");
             zipFolder(new File("target").toPath(), createTempFile);
             client.buildConfigs().inNamespace(namespace).withName("kogito-binary").instantiateBinary().fromFile(createTempFile.toFile());
@@ -69,9 +67,6 @@ public class GreetingMojo extends AbstractMojo {
     private void waitForBuildConfig(OlmAwareOpenShiftClient client, String namespace, String buildConfigName) {
         timeUtils.wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
             BuildConfig buildConfig = client.buildConfigs().inNamespace(namespace).withName(buildConfigName).get();
-            if (buildConfig != null) {
-                getLog().info("BuildConfig found");
-            }
             return buildConfig != null;
         });
     }
