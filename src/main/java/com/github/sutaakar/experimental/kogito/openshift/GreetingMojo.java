@@ -52,8 +52,7 @@ public class GreetingMojo extends AbstractMojo {
             zipFolder(new File("target").toPath(), createTempFile);
             client.buildConfigs().inNamespace(namespace).withName("kogito-binary").instantiateBinary().fromFile(createTempFile.toFile());
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new MojoExecutionException("Error while deploying Kogito application to OpenShift", e);
         }
     }
     
@@ -71,7 +70,7 @@ public class GreetingMojo extends AbstractMojo {
         });
     }
     
-    private void zipFolder(Path sourceFolderPath, Path zipPath) {
+    private void zipFolder(Path sourceFolderPath, Path zipPath) throws IOException {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipPath.toFile()))) {
             Files.walkFileTree(sourceFolderPath, new SimpleFileVisitor<Path>() {
     
@@ -83,8 +82,6 @@ public class GreetingMojo extends AbstractMojo {
                     return FileVisitResult.CONTINUE;
                 }
             });
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }
