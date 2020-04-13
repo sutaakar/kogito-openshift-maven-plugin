@@ -24,12 +24,6 @@ public class OlmAwareOpenShiftClient extends DefaultOpenShiftClient {
                                                                                                               .withScope("Namespaced")
                                                                                                               .withVersion("v1alpha1")
                                                                                                               .build();
-    private CustomResourceDefinitionContext kogitoContext = new CustomResourceDefinitionContext.Builder().withGroup("app.kiegroup.org")
-                                                                                                              .withName("kogitoapp")
-                                                                                                              .withPlural("kogitoapps")
-                                                                                                              .withScope("Namespaced")
-                                                                                                              .withVersion("v1alpha1")
-                                                                                                              .build();
 
     /**
      * Create new project in OpenShift.
@@ -87,27 +81,6 @@ public class OlmAwareOpenShiftClient extends DefaultOpenShiftClient {
             customResource(suscriptionContext).create(namespace, subscription);
         } catch (IOException e) {
             throw new RuntimeException("Error while reading Subscription YAML.", e);
-        }
-    }
-
-    /**
-     * Create new Kogito application.
-     *
-     * @param namespace Namespace where the Kogito application should be created in.
-     * @param name Kogito application name.
-     */
-    public void createKogitoApp(String namespace, String name) {
-        String kogitoApp = String.format("apiVersion: app.kiegroup.org/v1alpha1\n" +
-                                         "kind: KogitoApp\n" +
-                                         "metadata:\n" +
-                                         "  name: %s\n" +
-                                         "spec:\n" + 
-                                         "  build: {}",
-                                         name);
-        try {
-            customResource(kogitoContext).create(namespace, kogitoApp);
-        } catch (IOException e) {
-            throw new RuntimeException("Error while reading KogitoApp YAML.", e);
         }
     }
 }
