@@ -1,13 +1,12 @@
 package com.github.sutaakar.experimental.kogito.openshift;
 
 import java.io.IOException;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.function.BooleanSupplier;
+import java.util.concurrent.TimeUnit;
 
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.openshift.api.model.BuildConfig;
+import org.awaitility.Awaitility;
 
 public class KogitoOpenShiftClient extends OlmAwareOpenShiftClient {
 
@@ -30,19 +29,21 @@ public class KogitoOpenShiftClient extends OlmAwareOpenShiftClient {
      * Install Kogito operator into the specific namespace.
      *
      * @param namespace Where the Kogito operator will be installed to.
-     * @throws InterruptedException Thread is interrupted while waiting for Kogito operator to be installed.
      */
-    public void installKogitoOperator(String namespace) throws InterruptedException {
+    public void installKogitoOperator(String namespace) {
         createOperatorGroup(namespace, OPERATOR_GROUP);
         createSubscription(namespace, SUBSCRIPTION_NAME, CHANNEL, CATALOG_SOURCE);
         waitForDeploymentToBeAvailable(namespace, KOGITO_OPERATOR_DEPLOYMENT_NAME);
     }
 
-    private void waitForDeploymentToBeAvailable(String namespace, String deploymentName) throws InterruptedException {
-        wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
-            Deployment deployment = apps().deployments().inNamespace(namespace).withName(deploymentName).get();
-            return deployment != null && deployment.getStatus() != null && deployment.getStatus().getAvailableReplicas() != null && deployment.getStatus().getAvailableReplicas().intValue() > 0;
-        });
+    private void waitForDeploymentToBeAvailable(String namespace, String deploymentName) {
+        Awaitility.await()
+                  .pollInterval(1, TimeUnit.SECONDS)
+                  .atMost(5, TimeUnit.MINUTES)
+                  .until(() -> {
+                      Deployment deployment = apps().deployments().inNamespace(namespace).withName(deploymentName).get();
+                      return deployment != null && deployment.getStatus() != null && deployment.getStatus().getAvailableReplicas() != null && deployment.getStatus().getAvailableReplicas().intValue() > 0;
+                  });
     }
 
     /**
@@ -52,7 +53,7 @@ public class KogitoOpenShiftClient extends OlmAwareOpenShiftClient {
      * @param name Kogito application name.
      * @throws InterruptedException Thread is interrupted while waiting for Kogito application to be created.
      */
-    public void createKogitoApp(String namespace, String name) throws InterruptedException {
+    public void createKogitoApp(String namespace, String name) {
         String kogitoApp = String.format("apiVersion: app.kiegroup.org/v1alpha1\n" +
                                          "kind: KogitoApp\n" +
                                          "metadata:\n" +
@@ -68,19 +69,13 @@ public class KogitoOpenShiftClient extends OlmAwareOpenShiftClient {
         waitForBuildConfigToBeCreated(namespace, name + "-binary");
     }
 
-    private void waitForBuildConfigToBeCreated(String namespace, String buildConfigName) throws InterruptedException {
-        wait(Duration.ofMinutes(5), Duration.ofSeconds(1), () -> {
-            BuildConfig buildConfig = buildConfigs().inNamespace(namespace).withName(buildConfigName).get();
-            return buildConfig != null;
-        });
-    }
-
-    // Utility methods
-
-    private void wait(Duration maxDuration, Duration waitStep, BooleanSupplier booleanSupplier) throws InterruptedException {
-        Instant timeout = Instant.now().plus(maxDuration);
-        while (timeout.isAfter(Instant.now()) && !booleanSupplier.getAsBoolean()) {
-            Thread.sleep(waitStep.toMillis());
-        }
+    private void waitForBuildConfigToBeCreated(String namespace, String buildConfigName) {
+        Awaitility.await()
+                  .pollInterval(1, TimeUnit.SECONDS)
+                  .atMost(5, TimeUnit.MINUTES)
+                  .until(() -> {
+                      BuildConfig buildConfig = buildConfigs().inNamespace(namespace).withName(buildConfigName).get();
+                      return buildConfig != null;
+                  });
     }
 }

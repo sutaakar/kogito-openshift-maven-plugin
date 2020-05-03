@@ -21,6 +21,14 @@
       <version>3.2.5</version>
     </dependency>
     
+    <!-- Used for waiting code -->
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>3.0.0</version>
+    </dependency>
+
+    <!-- OpenShift dependencies -->
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>openshift-client</artifactId>

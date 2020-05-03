@@ -43,9 +43,6 @@ public class DeployKogitoApplicationMojo extends AbstractMojo {
             client.buildConfigs().inNamespace(namespace).withName("kogito-binary").instantiateBinary().fromFile(createTempFile.toFile());
         } catch (IOException e) {
             throw new MojoExecutionException("Error while deploying Kogito application to OpenShift", e);
-        } catch (InterruptedException e) {
-            getLog().warn("Interrupted!", e);
-            Thread.currentThread().interrupt();
         }
     }
 
